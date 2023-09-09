@@ -11,6 +11,7 @@ import ua.uhmc.sprftpfilessynch.grib2.header.Header;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,24 +27,25 @@ public class BinariesHandler {
 
     //  home/loc/Videos/sprftpfilessynch/src/main/resources/binaries
 
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
+    // /home/loc/IdeaProjects/windroze/src/main/resources/BINARY
+
+
 
     private File localDirectoryBinaries = new File(new File(new File(new File(new File(new File(System.getProperty("user.home"),
             "Videos"),
-            "sprftpfilessynch"),
+            "windroze"),
             "src"),
             "main"),
             "resources"),
-            "binaries");
+            "BINARY");
 
     private File localDirectoryGrib2 = new File(new File(new File(new File(new File(new File(System.getProperty("user.home"),
             "Videos"),
-            "sprftpfilessynch"),
+            "windroze"),
             "src"),
             "main"),
             "resources"),
-            "grib2");
+            "GRIB2");
     static Integer yy = 0;
     private Grib2FileName fileName;
     private byte [] bytes;
@@ -87,7 +89,9 @@ public class BinariesHandler {
         return new String(arr, StandardCharsets.US_ASCII);
     }
 
-    public byte [] cutIntoGrib2Files(byte [] bytes, Path pathToBinaryFile) throws IOException {
+    public byte [] cutIntoGrib2Files(byte [] bytes, Path pathToGrib2Files, Path pathToBinaryFile) throws IOException {
+
+        System.out.println("binary: ---> " + pathToBinaryFile);
 
         Integer total_len = bytes.length;
         Integer grb2_len = -1;
@@ -115,6 +119,7 @@ public class BinariesHandler {
         Integer[] headerIndexes = header.getHeaderIndexes();
 
         if(headerIndexes[0] == null && headerIndexes[1] == null){
+            // send message to rabbitmq -> grib2 are finished
             return bytes;
         } else {
             System.out.println("*******************************************");
@@ -125,20 +130,23 @@ public class BinariesHandler {
 
             Integer bodyStartIndex = body.getStartIndex();
             Integer bodyEndIndex = body.getEndIndex();
-            yy++;
+//            yy++;
 
             byte[] gribFileBytes = grib2.getGrib2Grid(bytes, bodyStartIndex, bodyEndIndex);
             grb2_len = gribFileBytes.length;
 
-            File f = new File(localDirectoryGrib2, grib2.getFilename().get());
+             // prints the path of the temporary directory
+
+            File f = new File(pathToGrib2Files.toFile(), grib2.getFilename().get());
             System.out.println("grb2 filename:  " + f.getPath());
             grib2.writeIntoBinaryFile(gribFileBytes, f.getPath());
-            rabbitTemplate.convertAndSend(Constants.METEO_DATA_EXCHANGE,Constants.GRIB2_ROUTING_KEY, grib2.getFilename().get());
+
+//            System.out.println("***^  " + messagetosend);
             bytes = grib2.getGrib2BulletinContent(bytes, bodyEndIndex);
         }
         System.out.println("total_len: " + total_len + " " + " grb2_len: " + grb2_len);
 
-        return total_len >= grb2_len ? cutIntoGrib2Files(bytes, pathToBinaryFile) : bytes;
+        return total_len >= grb2_len ? cutIntoGrib2Files(bytes, pathToGrib2Files, pathToBinaryFile) : bytes;
     }
 
 }

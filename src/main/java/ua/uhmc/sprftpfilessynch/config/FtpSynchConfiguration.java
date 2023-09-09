@@ -12,6 +12,7 @@ import org.springframework.integration.core.MessageSource;
 import org.springframework.integration.ftp.inbound.FtpInboundFileSynchronizer;
 import org.springframework.integration.ftp.inbound.FtpInboundFileSynchronizingMessageSource;
 import org.springframework.integration.ftp.session.DefaultFtpSessionFactory;
+import org.springframework.integration.handler.LoggingHandler;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
@@ -42,11 +43,11 @@ public class FtpSynchConfiguration {
 
     private File localDirectoryBinaries = new File(new File(new File(new File(new File(new File(System.getProperty("user.home"),
             "Videos"),
-            "sprftpfilessynch"),
+            "windroze"),
             "src"),
             "main"),
             "resources"),
-            "binaries");
+            "BINARY");
 
     @Bean
     DefaultFtpSessionFactory defaultFtpSessionFactory() {
@@ -57,6 +58,12 @@ public class FtpSynchConfiguration {
         defaultFtpSessionFactory.setPort(port);
         defaultFtpSessionFactory.setClientMode(FTPClient.PASSIVE_LOCAL_DATA_CONNECTION_MODE);
         return defaultFtpSessionFactory;
+    }
+
+    @ServiceActivator(inputChannel = "logging")
+    @Bean
+    public LoggingHandler loggingHandler() {
+        return new LoggingHandler(LoggingHandler.Level.DEBUG);
     }
 
     @Bean("synchronizertest")
@@ -74,7 +81,7 @@ public class FtpSynchConfiguration {
     }
 
     @Bean("ftpmessagesourcetest")
-    @InboundChannelAdapter(channel = "fileuploaded", poller = @Poller(fixedDelay = "1000"))
+    @InboundChannelAdapter(channel = "fileuploaded", poller = @Poller(fixedDelay = "10000"))
     public MessageSource<File> ftpMessageSource() {
 //        var localDirectory = new File(new File(System.getProperty("user.home"), "Desktop"), "local");
         FtpInboundFileSynchronizingMessageSource source =
